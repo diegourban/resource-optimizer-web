@@ -21,6 +21,7 @@
     "bole": "^3.0.2",
     "express": "^4.16.1",
     "express-load": "^1.1.16",
-    "formidable": "^1.1.1"
+    "formidable": "^1.1.1",
+    "node-fetch": "^1.7.3"
   }
 }

@@ -1,108 +1,67 @@
+// node
 const os = require("os");
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 
+// externo
 const formidable = require("formidable");
+const fetch = require("node-fetch");
 
 module.exports = function(app) {
 
-  const WEB_ENDPOINT = "/web/upload";
-  const UPLOAD_DIR = path.join(os.tmpdir(), "/uploads");
+  const uploadsDir = path.join(os.tmpdir(), "/uploads");
 
-  if (!fs.existsSync(UPLOAD_DIR)) {
-    console.log('Criando diretório de upload ' + UPLOAD_DIR);
-    fs.mkdirSync(UPLOAD_DIR);
+  if (!fs.existsSync(uploadsDir)) {
+    console.log('Criando diretório de upload comum: ' + uploadsDir);
+    fs.mkdirSync(uploadsDir);
   }
 
-  app.post(WEB_ENDPOINT, function(req, res, next){
+  app.post("/web/upload", function(req, res){
     var form = new formidable.IncomingForm();
 
     // define que é possível fazer upload de múltiplos arquivos num único request
     form.multiples = true;
 
-    // para cada arquivo feito upload com sucesso,
-    // renomeia para seu nome original,
-    // minifica e armazena no arquivo .min
+    // criando uma pasta com nome único
+    const hash = generateHash();
+    const currentUploadDir = path.join(uploadsDir, hash);
+    fs.mkdirSync(currentUploadDir);
+
+    const currentUploadInputDir = path.join(currentUploadDir, "input");
+    fs.mkdirSync(currentUploadInputDir);
+
+    const currentUploadOutputDir = path.join(currentUploadDir, "output");
+    fs.mkdirSync(currentUploadOutputDir);
+
     form.on("file", function(field, file) {
+      // para cada arquivo feito upload com sucesso,
       var extension = path.extname(file.name);
-      console.log(extension);
       var basename = path.basename(file.name, extension);
-      console.log(basename);
-      var newPath = path.join(UPLOAD_DIR, file.name);
-      fs.rename(file.path, newPath);
-      console.log(newPath);
+      var newPath = path.join(currentUploadInputDir, file.name);
+      // renomeia para seu nome original,
+      fs.renameSync(file.path, newPath);
 
-      if(extension === ".css") {
-        // direcionar para a api
-        /*
-        new CssMinifier().minify([newPath])
-          .then(function(output) {
-            const basename_min = basename + '.min' + extension;
-            fs.writeFile(path.join(UPLOAD_DIR, basename_min), output.styles, function(err) {
-              if(err) {
-                return console.log(err);
-              }
-              console.log("Arquivo salvo");
-            });
-          })
-          .catch(function(err) {
-            console.log("Ocorreu um erro na minificação: \n" + err);
-            res.status(500).send(err);
-          })
-          */
-      } else if(extension === ".html") {
-        /*
-        fs.readFile(newPath, 'utf-8', (err, data) => {
-          if (err) throw err;
-          console.log(data);
-          var result = new HtmlMinifier().minify(data);
+      // prepara o strem de leitura do arquivo
+      let readStream = fs.createReadStream(newPath);
 
-          const basename_min = basename + '.min' + extension;
-          fs.writeFile(path.join(UPLOAD_DIR, basename_min), result, function(err) {
-            if(err) {
-              return console.log(err);
-            }
-            console.log("Arquivo salvo");
-          })
-        })
-        */
-      } else if(extension === ".js") {
-        /*
-        fs.readFile(newPath, 'utf-8', (err, data) => {
-          if (err) throw err;
-          console.log(data);
-          var result = new JsMinifier().minify(data);
-
-          const basename_min = basename + '.min' + extension;
-          fs.writeFile(path.join(UPLOAD_DIR, basename_min), result.code, function(err) {
-            if(err) {
-              return console.log(err);
-            }
-            console.log("Arquivo salvo");
-          })
-        })
-        */
-      } else if(extension === ".jpg" || extension === ".png") {
-        /*
-        fs.readFile(newPath, (err, data) => {
-          if (err) throw err;
-          console.log(data);
-          new ImageMinifier().minify(data)
-            .then(function(output) {
-              const basename_min = basename + '.min' + extension;
-              fs.writeFile(path.join(UPLOAD_DIR, basename_min), result, function(err) {
-                if(err) {
-                  return console.log(err);
-                }
-                console.log("Arquivo salvo");
-              })
-            })
-            .catch(function(err) {
-              console.log("Ocorreu um erro na minificação: \n" + err);
-            })
-        })
-        */
+      const requestInfo = {
+        method: "POST",
+        headers: {"Content-Type" : extensionToContentType(extension)},
+        body: readStream
       }
+
+      // envia para a API
+      fetch("http://localhost:3000/api/minify", requestInfo)
+      .then(response => {
+        const basename_min = basename + ".min" + extension;
+        // escreve o retorno no destino .min
+        var dest = fs.createWriteStream(path.join(currentUploadOutputDir, basename_min));
+        response.body.pipe(dest);
+      })
+      .catch(error => {
+        console.log(error);
+      });
     });
 
     form.on("error", function(err) {
@@ -110,10 +69,39 @@ module.exports = function(app) {
     });
 
     form.on("end", function() {
-      res.end("Sucesso");
+      res.end("Arquivos recebidos com sucesso");
     });
 
     form.parse(req);
   });
+
+  function generateHash() {
+    const current_date = (new Date()).valueOf().toString();
+    const random = Math.random().toString();
+    return crypto.createHash('sha1').update(current_date + random).digest('hex');
+  }
+
+  function extensionToContentType(extension) {
+    if(extension === ".css") {
+      return "text/css";
+    }
+    if(extension === ".html") {
+      return "text/html";
+    }
+
+    if(extension === ".js") {
+      return "text/javascript";
+    }
+
+    if(extension === ".jpg") {
+      return "image/jpeg";
+    }
+
+    if(extension === ".png") {
+      return "image/png";
+    }
+
+    return "invalid";
+  }
 
 }
