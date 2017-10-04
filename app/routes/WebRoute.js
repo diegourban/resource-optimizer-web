@@ -7,6 +7,7 @@ const crypto = require("crypto");
 // externo
 const formidable = require("formidable");
 const fetch = require("node-fetch");
+const archiver = require("archiver");
 
 module.exports = function(app) {
 
@@ -17,7 +18,7 @@ module.exports = function(app) {
     fs.mkdirSync(uploadsDir);
   }
 
-  app.post("/web/upload", function(req, res){
+  app.post("/web/upload", function(req, res) {
     var form = new formidable.IncomingForm();
 
     // define que é possível fazer upload de múltiplos arquivos num único request
@@ -33,6 +34,8 @@ module.exports = function(app) {
 
     const currentUploadOutputDir = path.join(currentUploadDir, "output");
     fs.mkdirSync(currentUploadOutputDir);
+
+    var promises = [];
 
     form.on("file", function(field, file) {
       // para cada arquivo feito upload com sucesso,
@@ -52,7 +55,7 @@ module.exports = function(app) {
       }
 
       // envia para a API
-      fetch("http://localhost:3000/api/minify", requestInfo)
+      let fetchCall = fetch("http://localhost:3000/api/minify", requestInfo)
       .then(response => {
         const basename_min = basename + ".min" + extension;
         // escreve o retorno no destino .min
@@ -62,6 +65,7 @@ module.exports = function(app) {
       .catch(error => {
         console.log(error);
       });
+      promises.push(fetchCall);
     });
 
     form.on("error", function(err) {
@@ -69,10 +73,46 @@ module.exports = function(app) {
     });
 
     form.on("end", function() {
-      res.end("Arquivos recebidos com sucesso");
+      Promise.all(promises).then(function() {
+        const zipFile = path.join(uploadsDir, hash, hash + ".zip");
+        var output = fs.createWriteStream(zipFile);
+        var archive = archiver('zip');
+
+        output.on('close', function () {
+          console.log(archive.pointer() + ' total de bytes');
+          console.log('archiver foi finalizado e o arquivo de saída foi fechado.');
+        });
+
+        archive.on('error', function(err){
+          throw err;
+        });
+
+        archive.pipe(output);
+
+        archive.directory(currentUploadOutputDir, false);
+
+        archive.finalize();
+      }, function(err) {
+        console.log(err);
+      });
+
+      var json = JSON.stringify({
+        hash : hash
+      });
+      res.end(json);
     });
 
     form.parse(req);
+  });
+
+  app.get("/web/download/:hash", function(req, res) {
+    const hash = req.params.hash;
+    const zipFile = path.join(uploadsDir, hash, hash + ".zip");
+    if(!fs.existsSync(zipFile)) {
+      return res.status(404).send("Arquivo não encontrado");
+    }
+
+    res.sendFile(zipFile);
   });
 
   function generateHash() {
