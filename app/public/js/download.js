@@ -1,7 +1,29 @@
-$('.btn-upload').on('click', function (){
-    $('#input-upload').click();
-    $('.progress-bar').text('0%');
-    $('.progress-bar').width('0%');
+var query = window.location.search.substring(1)
+console.log(query);
+var hash = query.split("hash=")[1];
+console.log(hash);
+
+function pollRequest(hash) {
+  console.log("refresh");
+  console.log("calling " + hash);
+  fetch("/web/download/" + hash)
+  .then(function(response) {
+    console.log(response);
+    if(response.ok) {
+      console.log("recebendo");
+    } else if(response.status === 404) {
+      setTimeout(pollRequest, 5000, hash);
+    }
+  })
+  .catch(function(error) {
+    console.log('There has been a problem with your fetch operation: ' + error.message);
+  });;
+}
+
+setTimeout(pollRequest, 5000, hash);
+
+$('.btn-download').on('click', function (){
+  console.log('download');
 });
 
 $('#input-upload').on('change', function(){
@@ -29,9 +51,7 @@ $('#input-upload').on('change', function(){
         console.log('Upload feito com sucesso!\n' + data);
         var datap = JSON.parse(data);
         console.log(datap.hash);
-        setTimeout(function(hash) {
-          window.location.href = "/download.html?hash=" + hash;
-        }, 2000, datap.hash);
+        //window.location.href = "/" + datap.hash;
       },
       xhr: function() {
         var xhr = new XMLHttpRequest();

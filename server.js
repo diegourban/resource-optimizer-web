@@ -1,11 +1,11 @@
-var app = require("./app/index")();
-var config = require("./app/config");
+const app = require("./app/index")();
+const config = require("./app/config");
 
 // log
-var bole = require("bole");
+const bole = require("bole");
 
 bole.output({level: "debug", stream: process.stdout})
-var log = bole("server");
+const log = bole("server");
 
 log.info("Servidor iniciando...");
 
@@ -17,3 +17,7 @@ app.listen(config.express.port, config.express.ip, function (error) {
   log.info("Servidor Express iniciado e ouvindo em http://" +
     config.express.ip + ":" + config.express.port)
 })
+.on('error', function(err){
+    console.log('on error handler');
+    console.log(err);
+});

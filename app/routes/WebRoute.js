@@ -5,13 +5,16 @@ const fs = require("fs");
 const crypto = require("crypto");
 
 // externo
+const unzip = require("unzip");
 const formidable = require("formidable");
 const fetch = require("node-fetch");
 const archiver = require("archiver");
 
 module.exports = function(app) {
-
+  
   const uploadsDir = path.join(os.tmpdir(), "/uploads");
+  const EXTRACTED_DIR = "__extracted";
+  const OPTIMIZED_DIR = "__optimized";
 
   if (!fs.existsSync(uploadsDir)) {
     console.log('Criando diretório de upload comum: ' + uploadsDir);
@@ -21,51 +24,25 @@ module.exports = function(app) {
   app.post("/web/upload", function(req, res) {
     var form = new formidable.IncomingForm();
 
-    // define que é possível fazer upload de múltiplos arquivos num único request
-    form.multiples = true;
-
     // criando uma pasta com nome único
     const hash = generateHash();
     const currentUploadDir = path.join(uploadsDir, hash);
     fs.mkdirSync(currentUploadDir);
 
-    const currentUploadInputDir = path.join(currentUploadDir, "input");
-    fs.mkdirSync(currentUploadInputDir);
-
-    const currentUploadOutputDir = path.join(currentUploadDir, "output");
-    fs.mkdirSync(currentUploadOutputDir);
-
-    var promises = [];
+    const currentExtractedDir = path.join(currentUploadDir, EXTRACTED_DIR);
+    fs.mkdirSync(currentExtractedDir);
 
     form.on("file", function(field, file) {
       // para cada arquivo feito upload com sucesso,
       var extension = path.extname(file.name);
       var basename = path.basename(file.name, extension);
-      var newPath = path.join(currentUploadInputDir, file.name);
-      // renomeia para seu nome original,
-      fs.renameSync(file.path, newPath);
+      var newPath = path.join(currentExtractedDir, file.name);
 
-      // prepara o strem de leitura do arquivo
-      let readStream = fs.createReadStream(newPath);
-
-      const requestInfo = {
-        method: "POST",
-        headers: {"Content-Type" : extensionToContentType(extension)},
-        body: readStream
-      }
-
-      // envia para a API
-      let fetchCall = fetch("http://localhost:3000/api/minify", requestInfo)
-      .then(response => {
-        const basename_min = basename + ".min" + extension;
-        // escreve o retorno no destino .min
-        var dest = fs.createWriteStream(path.join(currentUploadOutputDir, basename_min));
-        response.body.pipe(dest);
-      })
-      .catch(error => {
-        console.log(error);
+      fs.createReadStream(file.path).pipe(unzip.Extract({path: currentExtractedDir}))
+      .on("close", function() {
+        console.log('All the data in the file has been read');
+        processDirectory(hash, currentUploadDir, currentExtractedDir);
       });
-      promises.push(fetchCall);
     });
 
     form.on("error", function(err) {
@@ -73,29 +50,6 @@ module.exports = function(app) {
     });
 
     form.on("end", function() {
-      Promise.all(promises).then(function() {
-        const zipFile = path.join(uploadsDir, hash, hash + ".zip");
-        var output = fs.createWriteStream(zipFile);
-        var archive = archiver('zip');
-
-        output.on('close', function () {
-          console.log(archive.pointer() + ' total de bytes');
-          console.log('archiver foi finalizado e o arquivo de saída foi fechado.');
-        });
-
-        archive.on('error', function(err){
-          throw err;
-        });
-
-        archive.pipe(output);
-
-        archive.directory(currentUploadOutputDir, false);
-
-        archive.finalize();
-      }, function(err) {
-        console.log(err);
-      });
-
       var json = JSON.stringify({
         hash : hash
       });
@@ -114,6 +68,77 @@ module.exports = function(app) {
 
     res.sendFile(zipFile);
   });
+
+  function processDirectory(hash, currentUploadDir, startingDirectory) {
+    var stack = [startingDirectory];
+
+    var promises = [];
+
+    while (stack.length) {
+      var currentPath = stack.pop();
+      var currentFile = fs.statSync(currentPath);
+
+      // if it's a directory,
+      // put the contents in our stack
+      if (currentFile.isDirectory()) {
+        fs.mkdirSync(currentPath.replace(EXTRACTED_DIR, OPTIMIZED_DIR));
+        fs.readdirSync(currentPath).forEach(function(p) {
+            stack.push(currentPath + path.sep + p);
+        });
+      // if it's a file
+      } else {
+        let extension = extensionToContentType(path.extname(currentPath));
+
+        if(extension === "invalid") {
+          fs.createReadStream(currentPath).pipe(fs.createWriteStream(currentPath.replace(EXTRACTED_DIR, OPTIMIZED_DIR)));
+        } else {
+          const requestInfo = {
+            method: "POST",
+            headers: {"Content-Type" : extension},
+            body: fs.createReadStream(currentPath)
+          }
+
+          // envia para a API
+          let fetchCall = fetchAPI(requestInfo, currentPath);
+          promises.push(fetchCall);
+        }
+      }
+    }
+
+    Promise.all(promises).then(function() {
+      const zipFile = path.join(currentUploadDir, hash + ".zip");
+      var output = fs.createWriteStream(zipFile);
+      var archive = archiver('zip');
+
+      output.on('close', function () {
+        console.log(archive.pointer() + ' total de bytes');
+        console.log('archiver foi finalizado e o arquivo de saída foi fechado.');
+      });
+
+      archive.on('error', function(err){
+        throw err;
+      });
+
+      archive.pipe(output);
+
+      archive.directory(startingDirectory.replace(EXTRACTED_DIR, OPTIMIZED_DIR), false);
+
+      archive.finalize();
+    }, function(err) {
+      console.log(err);
+    });
+  }
+
+  function fetchAPI(requestInfo, currentPath) {
+    return fetch("http://localhost:3000/api/minify", requestInfo)
+    .then(response => {
+      var dest = currentPath.replace(EXTRACTED_DIR, OPTIMIZED_DIR);
+      response.body.pipe(fs.createWriteStream(dest));
+    })
+    .catch(error => {
+      console.log(error);
+    });
+  }
 
   function generateHash() {
     const current_date = (new Date()).valueOf().toString();
