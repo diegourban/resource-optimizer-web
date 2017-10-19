@@ -1,5 +1,5 @@
-const app = require("./app/index")();
-const config = require("./app/config");
+const app = require("./config/express")();
+const config = require("./config/config");
 
 // log
 const bole = require("bole");

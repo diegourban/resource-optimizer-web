@@ -4,9 +4,9 @@ const load = require("express-load");
 module.exports = function() {
   var app = express();
 
-  app.use(express.static('./app/public'));
+  app.use(express.static('./public'));
 
-  load("routes", {cwd : "app"}).into(app);
+  load("routes", {cwd : "lib"}).into(app);
 
   return app;
 }
