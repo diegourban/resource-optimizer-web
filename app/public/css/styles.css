@@ -67,3 +67,7 @@ h2 {
     width: 450px;
   }
 }
+
+#area-download {
+  display: none;
+}

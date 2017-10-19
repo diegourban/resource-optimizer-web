@@ -1,10 +1,10 @@
-$('.btn-upload').on('click', function (){
-    $('#input-upload').click();
-    $('.progress-bar').text('0%');
-    $('.progress-bar').width('0%');
+$(".btn-upload").on("click", function (){
+    $("#input-upload").click();
+    $(".progress-bar").text("0%");
+    $(".progress-bar").width("0%");
 });
 
-$('#input-upload').on('change', function(){
+$("#input-upload").on("change", function(){
 
   var files = $(this).get(0).files;
 
@@ -16,42 +16,38 @@ $('#input-upload').on('change', function(){
       var file = files[i];
 
       // adiciona cada arquivo no formData
-      formData.append('uploads', file, file.name);
+      formData.append("projectFile", file, file.name);
     }
 
     $.ajax({
-      url: '/web/upload',
-      type: 'POST',
+      url: "/web/upload",
+      type: "POST",
       data: formData,
       processData: false,
       contentType: false,
       success: function(data){
-        console.log('Upload feito com sucesso!\n' + data);
+        console.log("Upload feito com sucesso!\n" + data);
         var datap = JSON.parse(data);
         console.log(datap.hash);
-        setTimeout(function(hash) {
-          window.location.href = "/download.html?hash=" + hash;
-        }, 2000, datap.hash);
+        exibirBotaoDownload(datap.url);
       },
       xhr: function() {
         var xhr = new XMLHttpRequest();
 
-        xhr.upload.addEventListener('progress', function(evt) {
+        xhr.upload.addEventListener("progress", function(evt) {
 
           if (evt.lengthComputable) {
             var percentComplete = evt.loaded / evt.total;
             percentComplete = parseInt(percentComplete * 100);
 
             // atualizando a barra de progresso
-            $('.progress-bar').text(percentComplete + '%');
-            $('.progress-bar').width(percentComplete + '%');
+            $("#progress-bar-upload").text(percentComplete + "%");
+            $("#progress-bar-upload").width(percentComplete + "%");
 
             if (percentComplete === 100) {
-              $('.progress-bar').html('Arquivo enviado com sucesso.');
+              $("#progress-bar-upload").html("Otimizando...");
             }
-
           }
-
         }, false);
 
         return xhr;
@@ -60,3 +56,10 @@ $('#input-upload').on('change', function(){
 
   }
 });
+
+function exibirBotaoDownload(urlDownload) {
+  $("#progress-bar-upload").removeClass("progress-bar-striped active");
+  $("#progress-bar-upload").html("Finalizado");
+  $("#area-download .btn-download").attr("href", "http://localhost:3001" + urlDownload);
+  $("#area-download").show(1000);
+}

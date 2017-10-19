@@ -6,62 +6,57 @@ const crypto = require("crypto");
 
 // externo
 const unzip = require("unzip");
-const formidable = require("formidable");
+const multer = require("multer");
 const fetch = require("node-fetch");
 const archiver = require("archiver");
 
 module.exports = function(app) {
-  
-  const uploadsDir = path.join(os.tmpdir(), "/uploads");
+
+  const UPLOADS_DIR = path.join(os.tmpdir(), "/uploads");
   const EXTRACTED_DIR = "__extracted";
   const OPTIMIZED_DIR = "__optimized";
 
-  if (!fs.existsSync(uploadsDir)) {
-    console.log('Criando diretório de upload comum: ' + uploadsDir);
-    fs.mkdirSync(uploadsDir);
+  var upload = multer({ dest: os.tmpdir() });
+
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    console.log('Criando diretório de upload comum: ' + UPLOADS_DIR);
+    fs.mkdirSync(UPLOADS_DIR);
   }
 
-  app.post("/web/upload", function(req, res) {
-    var form = new formidable.IncomingForm();
-
-    // criando uma pasta com nome único
+  app.post("/web/upload", upload.single("projectFile"), function(req, res) {
+    // criando uma pasta com nome único para esse upload
     const hash = generateHash();
-    const currentUploadDir = path.join(uploadsDir, hash);
+    console.log(hash);
+
+    const currentUploadDir = path.join(UPLOADS_DIR, hash);
     fs.mkdirSync(currentUploadDir);
 
     const currentExtractedDir = path.join(currentUploadDir, EXTRACTED_DIR);
     fs.mkdirSync(currentExtractedDir);
 
-    form.on("file", function(field, file) {
-      // para cada arquivo feito upload com sucesso,
-      var extension = path.extname(file.name);
-      var basename = path.basename(file.name, extension);
-      var newPath = path.join(currentExtractedDir, file.name);
-
-      fs.createReadStream(file.path).pipe(unzip.Extract({path: currentExtractedDir}))
-      .on("close", function() {
-        console.log('All the data in the file has been read');
-        processDirectory(hash, currentUploadDir, currentExtractedDir);
-      });
+    fs.createReadStream(req.file.path).pipe(unzip.Extract({path: currentExtractedDir}))
+    .on("close", function() {
+      console.log("Todos os dados foram extraídos");
+      processDirectory(hash, currentUploadDir, currentExtractedDir).
+      then(function(data) {
+        console.log(data);
+        var json = JSON.stringify({
+          hash : hash,
+          files: data,
+          url: "/web/download/" + hash
+        });
+        res.end(json);
+      })
+      .catch(err => {
+        console.error(err);
+        res.status(500).send({ error: 'Something failed!' });
+      })
     });
-
-    form.on("error", function(err) {
-      console.log("Ocorreu em erro: \n" + err);
-    });
-
-    form.on("end", function() {
-      var json = JSON.stringify({
-        hash : hash
-      });
-      res.end(json);
-    });
-
-    form.parse(req);
   });
 
   app.get("/web/download/:hash", function(req, res) {
     const hash = req.params.hash;
-    const zipFile = path.join(uploadsDir, hash, hash + ".zip");
+    const zipFile = path.join(UPLOADS_DIR, hash, hash + ".zip");
     if(!fs.existsSync(zipFile)) {
       return res.status(404).send("Arquivo não encontrado");
     }
@@ -70,63 +65,69 @@ module.exports = function(app) {
   });
 
   function processDirectory(hash, currentUploadDir, startingDirectory) {
-    var stack = [startingDirectory];
+    return new Promise(function(resolve, reject) {
+      var stack = [startingDirectory];
 
-    var promises = [];
+      var promises = [];
 
-    while (stack.length) {
-      var currentPath = stack.pop();
-      var currentFile = fs.statSync(currentPath);
+      while (stack.length) {
+        var currentPath = stack.pop();
+        var currentFile = fs.statSync(currentPath);
 
-      // if it's a directory,
-      // put the contents in our stack
-      if (currentFile.isDirectory()) {
-        fs.mkdirSync(currentPath.replace(EXTRACTED_DIR, OPTIMIZED_DIR));
-        fs.readdirSync(currentPath).forEach(function(p) {
-            stack.push(currentPath + path.sep + p);
-        });
-      // if it's a file
-      } else {
-        let extension = extensionToContentType(path.extname(currentPath));
-
-        if(extension === "invalid") {
-          fs.createReadStream(currentPath).pipe(fs.createWriteStream(currentPath.replace(EXTRACTED_DIR, OPTIMIZED_DIR)));
+        // dirtórios são adicionados na pilha
+        if (currentFile.isDirectory()) {
+          fs.mkdirSync(currentPath.replace(EXTRACTED_DIR, OPTIMIZED_DIR));
+          fs.readdirSync(currentPath).forEach(function(p) {
+              stack.push(currentPath + path.sep + p);
+          });
+        // arquivos são copiados ou otimizados
         } else {
-          const requestInfo = {
-            method: "POST",
-            headers: {"Content-Type" : extension},
-            body: fs.createReadStream(currentPath)
-          }
+          let extension = extensionToContentType(path.extname(currentPath));
 
-          // envia para a API
-          let fetchCall = fetchAPI(requestInfo, currentPath);
-          promises.push(fetchCall);
+          if(extension === "invalid") {
+            fs.createReadStream(currentPath).pipe(fs.createWriteStream(currentPath.replace(EXTRACTED_DIR, OPTIMIZED_DIR)));
+          } else {
+            const requestInfo = {
+              method: "POST",
+              headers: {"Content-Type" : extension},
+              body: fs.createReadStream(currentPath)
+            }
+
+            // envia para a API otimizar
+            let fetchCall = fetchAPI(requestInfo, currentPath);
+            promises.push(fetchCall);
+          }
         }
       }
-    }
 
-    Promise.all(promises).then(function() {
-      const zipFile = path.join(currentUploadDir, hash + ".zip");
-      var output = fs.createWriteStream(zipFile);
-      var archive = archiver('zip');
+      Promise.all(promises)
+      .then(function(data) {
+        const zipFile = path.join(currentUploadDir, hash + ".zip");
+        var output = fs.createWriteStream(zipFile);
+        var archive = archiver('zip');
 
-      output.on('close', function () {
-        console.log(archive.pointer() + ' total de bytes');
-        console.log('archiver foi finalizado e o arquivo de saída foi fechado.');
+        output.on('close', function () {
+          console.log(archive.pointer() + ' total de bytes');
+          console.log('archiver foi finalizado e o arquivo de saída foi fechado.');
+        });
+
+        archive.on('error', function(err){
+          throw err;
+        });
+
+        archive.pipe(output);
+
+        archive.directory(startingDirectory.replace(EXTRACTED_DIR, OPTIMIZED_DIR), false);
+
+        archive.finalize();
+        resolve(data.length);
+      })
+      .catch(err => {
+        reject(err);
       });
 
-      archive.on('error', function(err){
-        throw err;
-      });
-
-      archive.pipe(output);
-
-      archive.directory(startingDirectory.replace(EXTRACTED_DIR, OPTIMIZED_DIR), false);
-
-      archive.finalize();
-    }, function(err) {
-      console.log(err);
     });
+
   }
 
   function fetchAPI(requestInfo, currentPath) {
