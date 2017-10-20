@@ -31,6 +31,9 @@ body {
   background-color: #FA8900;
   border: none;
 }
+.progress {
+  margin-top: 20px;
+}
 
 h4 {
   padding-bottom: 30px;
@@ -70,4 +73,10 @@ h2 {
 
 #area-download {
   display: none;
+}
+
+#span-total-arquivos,
+#span-espaco,
+#span-percentagem {
+  display: block;
 }

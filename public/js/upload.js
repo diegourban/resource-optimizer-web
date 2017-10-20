@@ -1,7 +1,8 @@
 $(".btn-upload").on("click", function (){
-    $("#input-upload").click();
-    $(".progress-bar").text("0%");
-    $(".progress-bar").width("0%");
+  esconderAreaDownload();
+  $("#input-upload").click();
+  $(".progress-bar").text("0%");
+  $(".progress-bar").width("0%");
 });
 
 $("#input-upload").on("change", function(){
@@ -27,9 +28,9 @@ $("#input-upload").on("change", function(){
       contentType: false,
       success: function(data){
         console.log("Upload feito com sucesso!\n" + data);
-        var datap = JSON.parse(data);
-        console.log(datap.hash);
-        exibirBotaoDownload(datap.url);
+        var result = JSON.parse(data);
+        console.log(result);
+        exibirAreaDownload(result);
       },
       xhr: function() {
         var xhr = new XMLHttpRequest();
@@ -57,9 +58,17 @@ $("#input-upload").on("change", function(){
   }
 });
 
-function exibirBotaoDownload(urlDownload) {
+function esconderAreaDownload() {
+  $("#area-download").hide(1000);
+  $("#progress-bar-upload").addClass("progress-bar-striped active");
+}
+
+function exibirAreaDownload(result) {
+  $("#span-total-arquivos").text(result.stats.files + " arquivos otimizados");
+  $("#span-espaco").text((result.stats.difference / 1024).toFixed(2)  + " KB a menos");
+  $("#span-percentagem").text("Economia de " + (100 - (100 * result.stats.ratio)).toFixed(2) + "%");
   $("#progress-bar-upload").removeClass("progress-bar-striped active");
   $("#progress-bar-upload").html("Finalizado");
-  $("#area-download .btn-download").attr("href", "http://localhost:3001" + urlDownload);
+  $("#area-download .btn-download").attr("href", "http://localhost:3001" + result.url);
   $("#area-download").show(1000);
 }
