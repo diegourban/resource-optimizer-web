@@ -19,14 +19,12 @@
   "homepage": "https://github.com/diegourban/resource-optimizer-web#readme",
   "dependencies": {
     "archiver": "^2.0.3",
-    "bole": "^3.0.2",
     "express": "^4.16.1",
     "express-load": "^1.1.16",
     "get-folder-size": "^1.0.0",
     "multer": "^1.3.0",
-    "node-fetch": "^1.7.3"
-  },
-  "devDependencies": {
-    "unzip": "^0.1.11"
+    "node-fetch": "^1.7.3",
+    "unzip": "^0.1.11",
+    "winston": "^2.4.0"
   }
 }
