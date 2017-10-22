@@ -16,5 +16,6 @@ config.app = {
 config.api = {
   ip: "localhost",
   port: "3000",
-  url: "/api/minify"
+  url: "/api/minify",
+  acceptedExtensions: [".css", ".js", ".html", ".png", ".jpg"]
 }
