@@ -1,15 +1,16 @@
-$(".btn-upload").on("click", function (){
+$(".btn-upload").on("click", function () {
+  $("#input-upload").val("");
   esconderAreaDownload();
   $("#input-upload").click();
   $(".progress-bar").text("0%");
   $(".progress-bar").width("0%");
 });
 
-$("#input-upload").on("change", function(){
+$("#input-upload").on("change", function() {
 
   var files = $(this).get(0).files;
 
-  if (files.length > 0){
+  if (files.length > 0) {
     // Cria uma objeto FormData que vai ser enviado com o request
     var formData = new FormData();
 
@@ -20,8 +21,11 @@ $("#input-upload").on("change", function(){
       formData.append("projectFile", file, file.name);
     }
 
+    var quality = $('input[name=quality]:checked').val();
+    var queryParams = "quality=" + quality + "&lossless=true";
+
     $.ajax({
-      url: "/web/upload",
+      url: "/web/upload?" + queryParams,
       type: "POST",
       data: formData,
       processData: false,

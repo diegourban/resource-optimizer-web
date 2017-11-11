@@ -80,3 +80,23 @@ h2 {
 #span-percentagem {
   display: block;
 }
+
+.toolbar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  float: right;
+  width: 25%;
+  background-color: #ffe;
+  margin: 10px;
+  padding: 10px;
+}
+
+.quality {
+  float:left;
+}
+.radio {
+    float: left;
+    margin: 3px;
+    clear: both;
+}
