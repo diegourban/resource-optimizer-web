@@ -92,10 +92,15 @@ h2 {
   padding: 10px;
 }
 
-.quality {
+.config-group {
+  clear: both;
+}
+
+.config-desc {
   float:left;
 }
-.radio {
+
+.radio, .checkbox {
     float: left;
     margin: 3px;
     clear: both;

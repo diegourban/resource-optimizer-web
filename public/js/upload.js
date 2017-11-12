@@ -22,7 +22,8 @@ $("#input-upload").on("change", function() {
     }
 
     var quality = $('input[name=quality]:checked').val();
-    var queryParams = "quality=" + quality + "&lossless=true";
+    var lossless = $("#jpegLossless").is(':checked');
+    var queryParams = "quality=" + quality + "&lossless=" + lossless;
 
     $.ajax({
       url: "/web/upload?" + queryParams,
@@ -31,21 +32,21 @@ $("#input-upload").on("change", function() {
       processData: false,
       contentType: false,
       success: function(data){
-        $(".btn-upload").prop('disabled', false);
+        habilitarEntrada();
         console.log("Upload feito com sucesso!\n" + data);
         var result = JSON.parse(data);
         console.log(result);
         exibirAreaDownload(result);
       },
       error: function(xhr) {
-        $(".btn-upload").prop('disabled', false);
+        habilitarEntrada();
         console.log(xhr.status);
         console.log(xhr.statusText);
         console.log(xhr.responseText);
         exibirMensagemErro(xhr);
       },
       xhr: function() {
-        $(".btn-upload").prop('disabled', true);
+        desabilitarEntrada();
         var xhr = new XMLHttpRequest();
 
         xhr.upload.addEventListener("progress", function(evt) {
@@ -70,6 +71,18 @@ $("#input-upload").on("change", function() {
 
   }
 });
+
+function habilitarEntrada() {
+  controlarInteracao(false);
+}
+
+function desabilitarEntrada() {
+  controlarInteracao(true);
+}
+
+function controlarInteracao(disabled) {
+  $(".disableable").prop('disabled', disabled);
+}
 
 function esconderAreaDownload() {
   $("#area-download").hide(1000);

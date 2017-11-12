@@ -20,7 +20,7 @@
             <span class="glyphicon glyphicon-cloud-upload"></span>
             <h2>Otimizador de Recursos</h2>
             <div id="area-upload">
-              <button class="btn btn-lg btn-upload" type="button">Enviar Arquivo</button>
+              <button class="btn btn-lg btn-upload disableable" type="button">Enviar Arquivo</button>
               <div class="progress">
                 <div id="progress-bar-upload" class="progress-bar progress-bar-striped active" role="progressbar"></div>
               </div>
@@ -38,24 +38,34 @@
   </div>
 
   <div class="toolbar">
-    <div class="quality-group">
-      <label class="quality">Qualidade das Imagens</label>
+    <div class="config-group">
+      <label class="config-desc">Qualidade de Imagens PNG</label>
       <div class="radio">
         <label>
-          <input type="radio" name="quality" id="qualityHigh" value="high">
+          <input type="radio" class="disableable" name="quality" id="qualityHigh" value="high">
           Alta
         </label>
       </div>
       <div class="radio">
         <label>
-          <input type="radio" name="quality" id="qualityMed" value="average" checked>
+          <input type="radio" class="disableable" name="quality" id="qualityMed" value="average" checked>
           Média
         </label>
       </div>
       <div class="radio">
         <label>
-          <input type="radio" name="quality" id="qualityLow" value="low">
-          Baixa&mdash;be sure to include why it's great
+          <input type="radio" class="disableable" name="quality" id="qualityLow" value="low">
+          Baixa
+        </label>
+      </div>
+    </div>
+
+    <div class="config-group">
+      <label class="config-desc">Configuração de Imagens JPEG</label>
+      <div class="checkbox">
+        <label>
+          <input type="checkbox" class="disableable" name="lossless" id="jpegLossless" value="" checked>
+          Compressão sem perdas
         </label>
       </div>
     </div>
