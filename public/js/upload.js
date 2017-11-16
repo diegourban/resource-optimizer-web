@@ -6,6 +6,10 @@ $(".btn-upload").on("click", function () {
   $(".progress-bar").width("0%");
 });
 
+$("input[type=radio][name=uploadMode]").change(function() {
+  mudarModoUpload(this.value);
+});
+
 $("#input-upload").on("change", function() {
 
   var files = $(this).get(0).files;
@@ -14,19 +18,26 @@ $("#input-upload").on("change", function() {
     // Cria uma objeto FormData que vai ser enviado com o request
     var formData = new FormData();
 
-    for (var i = 0; i < files.length; i++) {
-      var file = files[i];
+    var mode = $("input[name=uploadMode]:checked").val();
 
-      // adiciona cada arquivo no formData
-      formData.append("projectFile", file, file.name);
+    if(mode == "project") {
+      formData.append("projectFile", files[0], files[0].name);
+    } else if(mode == "files") {
+      for (var i = 0; i < files.length; i++) {
+        var file = files[i];
+        // adiciona cada arquivo no formData
+        formData.append("files", file, file.name);
+      }
     }
 
-    var quality = $('input[name=quality]:checked').val();
-    var lossless = $("#jpegLossless").is(':checked');
+    var quality = $("input[name=quality]:checked").val();
+    var lossless = $("#jpegLossless").is(":checked");
     var queryParams = "quality=" + quality + "&lossless=" + lossless;
 
+    var url = "/web/upload/" + mode + "?" + queryParams;
+
     $.ajax({
-      url: "/web/upload?" + queryParams,
+      url: url,
       type: "POST",
       data: formData,
       processData: false,
@@ -72,6 +83,10 @@ $("#input-upload").on("change", function() {
   }
 });
 
+function urlFrom(mode) {
+
+}
+
 function habilitarEntrada() {
   controlarInteracao(false);
 }
@@ -91,7 +106,11 @@ function esconderAreaDownload() {
 }
 
 function exibirAreaDownload(result) {
-  $("#span-total-arquivos").text(result.stats.files + " arquivos otimizados");
+  var msg = " arquivo otimizado";
+  if(result.stats.files > 1) {
+    msg = " arquivos otimizados";
+  }
+  $("#span-total-arquivos").text(result.stats.files + msg);
   $("#span-espaco").text((result.stats.difference / 1024).toFixed(2)  + " KB a menos");
   $("#span-percentagem").text("Economia de " + (100 - (100 * result.stats.ratio)).toFixed(2) + "%");
   $("#progress-bar-upload").removeClass("progress-bar-striped active");
@@ -105,4 +124,30 @@ function exibirMensagemErro(xhr) {
   $("#progress-bar-upload").removeClass("progress-bar-striped active");
   $("#progress-bar-upload").addClass("progress-bar-danger");
   $("#progress-bar-upload").html(xhr.responseText);
+}
+
+function mudarModoUpload(modo) {
+  renomearBotaoUpload(modo);
+  reconfigurarAcceptType(modo);
+}
+
+function renomearBotaoUpload(modo) {
+  if(modo == "project") {
+    $(".btn-upload").html("Enviar Projeto");
+  } else if(modo = "files") {
+    $(".btn-upload").html("Enviar Arquivos");
+  }
+}
+
+function reconfigurarAcceptType(modo) {
+    var acceptTypes = acceptTypesFrom(modo);
+    $("#input-upload").prop("accept", acceptTypes);
+}
+
+function acceptTypesFrom(modo) {
+  if(modo == "project") {
+    return "application/zip";
+  } else if(modo == "files") {
+    return "text/css, application/javascript, text/html, image/png, image/jpeg";
+  }
 }

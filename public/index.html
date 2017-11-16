@@ -20,7 +20,7 @@
             <span class="glyphicon glyphicon-cloud-upload"></span>
             <h2>Otimizador de Recursos</h2>
             <div id="area-upload">
-              <button class="btn btn-lg btn-upload disableable" type="button">Enviar Arquivo</button>
+              <button class="btn btn-lg btn-upload disableable" type="button">Enviar Arquivos</button>
               <div class="progress">
                 <div id="progress-bar-upload" class="progress-bar progress-bar-striped active" role="progressbar"></div>
               </div>
@@ -38,6 +38,22 @@
   </div>
 
   <div class="toolbar">
+    <div class="config-group">
+      <label class="config-desc">Modo de Envio</label>
+      <div class="radio">
+        <label>
+          <input type="radio" class="disableable" name="uploadMode" id="modeProject" value="project">
+          Projeto (.zip)
+        </label>
+      </div>
+      <div class="radio">
+        <label>
+          <input type="radio" class="disableable" name="uploadMode" id="modeFiles" value="files" checked>
+          Arquivos (.css, .js, .html, .png, .jpeg)
+        </label>
+      </div>
+    </div>
+
     <div class="config-group">
       <label class="config-desc">Qualidade de Imagens PNG</label>
       <div class="radio">
@@ -72,7 +88,7 @@
   </div>
 </div>
 
-  <input id="input-upload" type="file" name="projectFile" accept="application/zip"></br>
+  <input id="input-upload" type="file" name="projectFile" accept="text/css, application/javascript, text/html, image/png, image/jpeg"></br>
 
   <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
