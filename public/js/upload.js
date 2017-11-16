@@ -143,6 +143,11 @@ function renomearBotaoUpload(modo) {
 function reconfigurarAcceptType(modo) {
     var acceptTypes = acceptTypesFrom(modo);
     $("#input-upload").prop("accept", acceptTypes);
+    if(modo == "project") {
+      $("#input-upload").removeAttr("multiple");
+    } else if(modo = "files") {
+      $("#input-upload").attr("multiple", true);
+    }
 }
 
 function acceptTypesFrom(modo) {
