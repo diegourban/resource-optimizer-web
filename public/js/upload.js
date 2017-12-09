@@ -32,7 +32,6 @@ $("#input-upload").on("change", function() {
 
     var pngQuality = $("input[name=pngQuality]:checked").val();
     var jpegQuality = $("input[name=jpegQuality]:checked").val();
-    //var lossless = $("#jpegLossless").is(":checked");
     var queryParams = "pngQuality=" + pngQuality + "&jpegQuality=" + jpegQuality;
 
     var url = "/web/upload/" + mode + "?" + queryParams;
