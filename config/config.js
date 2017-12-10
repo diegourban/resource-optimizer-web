@@ -14,6 +14,7 @@ config.app = {
 }
 
 config.api = {
+  api_rest_path: process.env.api_rest_path, 
   ip: "localhost",
   port: "3000",
   url: "/api/minify",
